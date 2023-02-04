@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 """Type checking with mypy"""
 
-from typing import Union, List, Optional, Any
+from typing import Union, List, Tuple, Any
 from typing_extensions import Protocol
 
 
-class NumRange(Protocol):
-    value: Optional[Union[int, float]]
-
-
-def zoom_array(lst: List[int], factor: Any = 2) -> List[List[int]]:
+def zoom_array(lst: Tuple, factor: int = 2) -> List:
     """Returns a list of elements from the argument"""
     zoomed_in: List = [
-        item for item in lst
+        item for item in list(lst)
         for i in range(int(factor))
     ]
     return zoomed_in
@@ -20,6 +16,6 @@ def zoom_array(lst: List[int], factor: Any = 2) -> List[List[int]]:
 
 array = [12, 72, 91]
 
-zoom_2x = zoom_array(array)
+zoom_2x = zoom_array(tuple(array))
 
-zoom_3x = zoom_array(array, 3.0)
+zoom_3x = zoom_array(tuple(array), int(3.0))
