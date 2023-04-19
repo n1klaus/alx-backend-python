@@ -9,7 +9,7 @@ import requests
 from utils import memoize, get_json
 
 
-class TestAcessNestedMap(unittest.TestCase):
+class TestAccessNestedMap(unittest.TestCase):
     """Test case for util function `access_nested_map`
     """
 
