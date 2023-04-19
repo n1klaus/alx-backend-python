@@ -2,9 +2,9 @@
 """Unit tests for utils module"""
 
 from parameterized import parameterized
-from typing import Any, Mapping, Sequence, Callable
+from typing import Any, Mapping, Sequence
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import requests
 from utils import memoize, get_json
 
@@ -21,17 +21,16 @@ class TestAccessNestedMap(unittest.TestCase):
     def test_access_nested_map(
             self, nested_map: Mapping, keys: Sequence, result: Any) -> None:
         """Testing correct ouput is given"""
-        output = None
         try:
             for key in keys:
-                output = nested_map.get(key)
+                nested_map = nested_map[key]
         except BaseException:
             pass
-        self.assertEqual(output, result)
+        self.assertEqual(nested_map, result)
 
     @parameterized.expand([
         ({}, ("a", ), KeyError),
-        ({"a": 1}, ("a", "b"), TypeError),
+        ({"a": 1}, ("a", "b"), KeyError),
     ])
     def test_access_nested_map_exception(
         self, nested_map: Mapping, keys: Sequence,
@@ -52,23 +51,29 @@ class TestGetJson(unittest.TestCase):
     ])
     def test_get_json(self, test_url: str, test_payload: Any) -> None:
         """Testing correct output is given"""
-        with patch("__main__.get_json") as mocked_function:
-            def side_effect(test_url: str):
-                """Side effect for mock function"""
-                with patch("__main__.requests", "get") as mock:
-                    mock.get(test_url)
-                mock.assert_called_once_with(test_url)
-            mocked_function.side_effect = side_effect
-            mocked_function(test_url)
+        def side_effect(test_url: str):
+            """Side effect for mock function"""
+            with patch.object(requests, "get", autospec=True) as mock:
+                my_payload = Mock(spec=object)
+                setattr(my_payload, "json", lambda: test_payload)
+                mock.return_value = my_payload
+                result = get_json(test_url)
+                self.assertEqual(result, test_payload)
+            mock.assert_called_once_with(test_url)
+            return test_payload
+
+        mocked_function = Mock(get_json)
+        mocked_function.side_effect = side_effect
+        result = mocked_function(test_url)
         mocked_function.assert_called_once_with(test_url)
-        self.assertEqual(mocked_function.return_value, test_payload)
+        self.assertEqual(result, test_payload)
 
 
 class TestMemoize(unittest.TestCase):
     """Test case for util function `memoize`
     """
 
-    def test_memoize(self, fn: Callable) -> None:
+    def test_memoize(self) -> None:
         """Testing correct output is given"""
         class TestClass:
 
@@ -79,14 +84,9 @@ class TestMemoize(unittest.TestCase):
             def a_property(self):
                 return self.a_method()
 
-        with patch.object(TestClass, "a_property", return_value=42
-                          ) as mock_property:
-            with patch.object(TestClass, "a_method", return_value=42
-                              ) as mock_method:
-                obj = TestClass()
-                obj.a_property()
-                obj.a_property()
-        mock_property.assert_called()
-        mock_method.assert_called_once()
-        self.assertEqual(mock_property.return_value, 42)
-        self.assertEqual(mock_method.return_value, 42)
+        with patch.object(TestClass, "a_method", return_value=lambda: 42
+                          ) as mock_method:
+            obj = TestClass()
+            self.assertEqual(obj.a_property(), 42)
+            self.assertEqual(obj.a_property(), 42)
+            mock_method.assert_called_once()
